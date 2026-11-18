@@ -22,8 +22,11 @@ printf ("Enter guest name: ");
     printf("Guest %s checked in to room %d.\n", room -> data.guest_name, room -> data.room_number);
 
 printf("Enter number of nights: ");
-    scanf("%d", &room -> data.nights_booked);
-    printf("Guest %s will stay for %d nights.\n", room -> data.guest_name, room -> data.nights_booked);
+   scanf("%d", &room->data.nights_booked);
+while (getchar() != '\n' && !feof(stdin)){
+}
+printf("Guest %s will stay for %d nights.\n", 
+        room -> data.guest_name, room -> data.nights_booked);
 
   room -> data.status = ROOM_OCCUPIED;
 printf("Room %d status updated to occupied.\n", room -> data.room_number);
@@ -76,6 +79,3 @@ void changeRoomStatus(Node *room, RoomStatus new_status)
     printf("Room %d status updated to %s.\n", room -> data.room_number,
            new_status == ROOM_AVAILABLE ? "available" : "maintenance");
 }
-
-
-
