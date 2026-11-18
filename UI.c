@@ -1,149 +1,275 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+
 #include "room.h"
-#include "ui.h"
-void checkIn(Node *room);
-void checkOut(Node *room);
-void changeRoomStatus(Node *room, RoomStatus status);
-void add_room(RoomList *list);
-int get_choice()
+#include "UI.h"
+#include "booking_engine.h"
+#include "linked_list.h"
+#include "file_persistence.h"
+
+// Get integer input
+int get_choice(const char *message)
 {
-    char input[20];
+    char input[100];
     int choice;
-    fgets(input, sizeof(input), stdin);
-    if (sscanf(input, "%d", &choice) == 1)
-        return choice;
-    return -1;
+    char extra;
+
+    printf("%s", message);
+
+    if (fgets(input, sizeof(input), stdin) == NULL) {
+        return -1;
+    }
+
+    if (sscanf(input, "%d %c", &choice, &extra) != 1) {
+        printf("Invalid input.\n");
+        return -1;
+    }
+
+    return choice;
 }
+
+// Get string input
 void get_string(char *text, int size)
 {
-    fgets(text, size, stdin);
-    text[strcspn(text, "\n")] = '\0';
-}
-void display_room(Room *room)
-{
-    printf("\nRoom Number : %d\n", room->room_number);
-    printf("Guest Name  : %s\n", room->guest_name);
-    printf("Price/Night : %.2f\n", room->price_per_night);
-    printf("Nights      : %d\n", room->nights_booked);
-    if (room->status == ROOM_AVAILABLE)
-        printf("Status      : Available\n");
-    else if (room->status == ROOM_OCCUPIED)
-        printf("Status      : Occupied\n");
-    else
-        printf("Status      : Maintenance\n");
-}
-void list_rooms(RoomList *list)
-{
-    Node *temp = list->head;
-    int choice;
-    printf("\n1. All\n2. Available\n3. Occupied\n4. Maintenance\n");
-    printf("Choice: ");
-    choice = get_choice();
-    while (temp != NULL)
-    {
-        if (choice == 1 ||
-            (choice == 2 && temp->data.status == ROOM_AVAILABLE) ||
-            (choice == 3 && temp->data.status == ROOM_OCCUPIED) ||
-            (choice == 4 && temp->data.status == ROOM_MAINTENANCE))
-        {
-            display_room(&temp->data);
-        }
-        temp = temp->next;
+    if (fgets(text, size, stdin) != NULL) {
+        text[strcspn(text, "\n")] = '\0';
     }
 }
+
+// Display room information
+void display_room(Room *room)
+{
+    if (room == NULL) {
+        printf("Room not found.\n");
+        return;
+    }
+
+    printf("\n----- ROOM DETAILS -----\n");
+    printf("Room Number: %d\n", room->room_number);
+    printf("Guest Name: %s\n", room->guest_name);
+    printf("Price per Night: %.2f\n", room->price_per_night);
+
+    printf("Room Type: ");
+
+    switch (room->type) {
+        case ROOM_SINGLE:
+            printf("Single\n");
+            break;
+
+        case ROOM_DOUBLE:
+            printf("Double\n");
+            break;
+
+        case ROOM_SUITE:
+            printf("Suite\n");
+            break;
+
+        default:
+            printf("Unknown\n");
+    }
+
+    printf("Room Status: ");
+
+    switch (room->status) {
+        case ROOM_AVAILABLE:
+            printf("Available\n");
+            break;
+
+        case ROOM_OCCUPIED:
+            printf("Occupied\n");
+            break;
+
+        case ROOM_MAINTENANCE:
+            printf("Maintenance\n");
+            break;
+
+        default:
+            printf("Unknown\n");
+    }
+
+    printf("------------------------\n");
+}
+
+// Display all rooms
+void list_rooms(RoomList *list)
+{
+    if (list == NULL || list->head == NULL) {
+        printf("No rooms available.\n");
+        return;
+    }
+
+    display_rooms(list);
+}
+
+// Select a room
 Node *select_room(RoomList *list)
 {
-    char input[20];
-    int number;
-    Node *temp = list->head;
-    printf("Enter room number: ");
-    fgets(input, sizeof(input), stdin);
-    if (sscanf(input, "%d", &number) != 1)
-    {
+    int room_number = get_choice("Enter room number: ");
+
+    if (room_number <= 0) {
         printf("Invalid room number.\n");
         return NULL;
     }
-    while (temp != NULL)
-    {
-        if (temp->data.room_number == number)
-            return temp;
-        temp = temp->next;
+
+    Node *room = find_room(list, room_number);
+
+    if (room == NULL) {
+        printf("Room not found.\n");
     }
-    printf("Room not found.\n");
-    return NULL;
+
+    return room;
 }
+
+// Add room through UI
+void add_room_menu(RoomList *list)
+{
+    Room room;
+
+    room.room_number = get_choice("Enter room number: ");
+
+    if (room.room_number <= 0) {
+        printf("Invalid room number.\n");
+        return;
+    }
+
+    printf("\nSelect Room Type:\n");
+    printf("1. Single\n");
+    printf("2. Double\n");
+    printf("3. Suite\n");
+
+    int type = get_choice("Enter choice: ");
+
+    if (type < 1 || type > 3) {
+        printf("Invalid room type.\n");
+        return;
+    }
+
+    room.type = (RoomType)(type - 1);
+
+    printf("Enter price per night: ");
+
+    char price_input[100];
+    char extra;
+    if (fgets(price_input, sizeof(price_input), stdin) == NULL ||
+        sscanf(price_input, "%lf %c",
+               &room.price_per_night, &extra) != 1 ||
+        room.price_per_night < 0) {
+        printf("Invalid price.\n");
+        return;
+    }
+
+    strcpy(room.guest_name, "N/A");
+    room.nights_booked = 0;
+    room.status = ROOM_AVAILABLE;
+
+    if (add_room(list, room)) {
+        printf("Room added successfully.\n");
+    } else {
+        printf("Room could not be added. Check for duplicate room number.\n");
+    }
+}
+
+// Room operations menu
 void room_operations_menu(Node *room)
 {
-    int choice, status;
-    do
-    {
-        printf("\n1. View Room\n");
-        printf("2. Check-in\n");
-        printf("3. Check-out\n");
-        printf("4. Change Status\n");
-        printf("5. Cancel Reservation\n");
-        printf("6. Back\n");
-        printf("Choice: ");
-        choice = get_choice();
-        if (choice == 1)
-            display_room(&room->data);
-        else if (choice == 2)
-            checkIn(room);
-        else if (choice == 3)
-            checkOut(room);
-        else if (choice == 4)
-        {
-            printf("1. Available\n");
-            printf("2. Maintenance\n");
-            printf("Choice: ");
-            status = get_choice();
-            if (status == 1)
-                changeRoomStatus(room, ROOM_AVAILABLE);
-            else if (status == 2)
-                changeRoomStatus(room, ROOM_MAINTENANCE);
-            else
-                printf("Invalid status.\n");
+    if (room == NULL) {
+        return;
+    }
+
+    int choice;
+
+    do {
+        printf("\n----- ROOM OPERATIONS -----\n");
+        printf("1. View Room Details\n");
+        printf("2. Check In\n");
+        printf("3. Check Out\n");
+        printf("4. Change Room Status\n");
+        printf("0. Back\n");
+
+        choice = get_choice("Enter your choice: ");
+
+        switch (choice) {
+            case 1:
+                display_room(&room->data);
+                break;
+
+            case 2:
+                checkIn(room);
+                break;
+
+            case 3:
+                checkOut(room);
+                break;
+
+            case 4: {
+                printf("\n1. Available\n");
+                printf("2. Maintenance\n");
+
+                int status = get_choice("Choose new status: ");
+
+                if (status == 1) {
+                    changeRoomStatus(room, ROOM_AVAILABLE);
+                } else if (status == 2) {
+                    changeRoomStatus(room, ROOM_MAINTENANCE);
+                } else {
+                    printf("Invalid status.\n");
+                }
+
+                break;
+            }
+
+            case 0:
+                break;
+
+            default:
+                printf("Invalid choice.\n");
         }
-        else if (choice == 5)
-        {
-            room->data.status = ROOM_AVAILABLE;
-            strcpy(room->data.guest_name, "N/A");
-            room->data.nights_booked = 0;
-            printf("Reservation cancelled.\n");
-        }
-        else if (choice != 6)
-            printf("Invalid choice.\n");
-    } while (choice != 6);
+
+    } while (choice != 0);
 }
+
+// Main menu
 void main_menu(RoomList *list)
 {
     int choice;
-    do
-    {
+
+    do {
         printf("\n===== HOTEL BOOKING SYSTEM =====\n");
-        printf("1. List Rooms\n");
-        printf("2. Add Room\n");
+        printf("1. Add Room\n");
+        printf("2. List Rooms\n");
         printf("3. Select Room\n");
-        printf("4. Save & Exit\n");
-        printf("Choice: ");
-        choice = get_choice();
-        if (choice == 1)
-            list_rooms(list);
-        else if (choice == 2)
-            add_room(list);
-        else if (choice == 3)
-        {
-            Node *room = select_room(list);
-            if (room != NULL)
-                room_operations_menu(room);
+        printf("0. Save and Exit\n");
+
+        choice = get_choice("Enter your choice: ");
+
+        switch (choice) {
+            case 1:
+                add_room_menu(list);
+                break;
+
+            case 2:
+                list_rooms(list);
+                break;
+
+            case 3: {
+                Node *room = select_room(list);
+
+                if (room != NULL) {
+                    room_operations_menu(room);
+                }
+
+                break;
+            }
+
+            case 0:
+                save_rooms_to_file(list);
+                printf("Exiting Hotel Booking System.\n");
+                break;
+
+            default:
+                printf("Invalid choice.\n");
         }
-        else if (choice == 4)
-        {
-            save_rooms_to_file(list);
-            printf("Data saved. Goodbye!\n");
-        }
-        else
-            printf("Invalid choice.\n");
-    } while (choice != 4);
+
+    } while (choice != 0);
 }
