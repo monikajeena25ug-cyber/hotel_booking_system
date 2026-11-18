@@ -1,97 +1,90 @@
-
-
 #include <stdio.h>
 #include <stdlib.h>
-#include "room.h"
+#include "file_persistence.h"
+#include "linked_list.h"
 
+#define FILE_NAME "rooms.txt"
 
-// Load rooms from file
 void load_rooms_from_file(RoomList *list)
 {
-    FILE *fp = fopen("rooms.dat", "rb");
+    FILE *file = fopen(FILE_NAME, "r");
 
-    if (fp == NULL)
-    {
+    if (file == NULL) {
+        printf("No existing room file found. Starting fresh.\n");
         return;
     }
 
-    Room tempRoom;
+    char line[256];
+    Room room;
 
-    while (fread(&tempRoom, sizeof(Room), 1, fp) == 1)
-    {
-        Node *newNode = malloc(sizeof(Node));
+    while (fgets(line, sizeof(line), file) != NULL) {
 
-        if (newNode == NULL)
-        {
-            fclose(fp);
-            return;
+        int result = sscanf(
+            line,
+            "%d|%49[^|]|%d|%lf|%d|%d",
+            &room.room_number,
+            room.guest_name,
+            (int *)&room.type,
+            &room.price_per_night,
+            &room.nights_booked,
+            (int *)&room.status
+        );
+
+        if (result != 6) {
+            continue;
         }
 
-        newNode->data = tempRoom;
-        newNode->next = NULL;
-
-        if (list->head == NULL)
-        {
-            list->head = newNode;
-        }
-        else
-        {
-            Node *temp = list->head;
-
-            while (temp->next != NULL)
-            {
-                temp = temp->next;
-            }
-
-            temp->next = newNode;
+        if (room.type < ROOM_SINGLE ||
+            room.type > ROOM_SUITE ||
+            room.status < ROOM_AVAILABLE ||
+            room.status > ROOM_MAINTENANCE ||
+            room.price_per_night < 0 ||
+            room.nights_booked < 0) {
+            continue;
         }
 
-        list->total_rooms++;
+        if (!add_room(list, room)) {
+            printf("Could not load room %d.\n", room.room_number);
+        }
     }
 
-    fclose(fp);
+    fclose(file);
+
+    printf("Room data loaded successfully.\n");
 }
 
-
-//  Save rooms to file
 void save_rooms_to_file(RoomList *list)
 {
-    FILE *fp = fopen("rooms.dat", "wb");
-
-    if (fp == NULL)
-    {
-        printf("Unable to open file.\n");
+    if (list == NULL) {
         return;
     }
 
-    Node *temp = list->head;
+    FILE *file = fopen(FILE_NAME, "w");
 
-    while (temp != NULL)
-    {
-        if (fwrite(&temp->data, sizeof(Room), 1, fp) != 1)
-        {
-            printf("Error saving room data.\n");
-            fclose(fp);
-            return;
-        }
-
-        temp = temp->next;
+    if (file == NULL) {
+        printf("Error opening file for saving.\n");
+        return;
     }
 
-    fclose(fp);
+    Node *current = list->head;
 
-    // Free linked list nodes
-    temp = list->head;
+    while (current != NULL) {
 
-    while (temp != NULL)
-    {
-        Node *nextNode = temp->next;
+        fprintf(
+            file,
+            "%d|%s|%d|%.2f|%d|%d\n",
+            current->data.room_number,
+            current->data.guest_name,
+            current->data.type,
+            current->data.price_per_night,
+            current->data.nights_booked,
+            current->data.status
+        );
 
-        free(temp);
-
-        temp = nextNode;
+        current = current->next;
     }
 
-    list->head = NULL;
-    list->total_rooms = 0;
+    fclose(file);
+
+    printf("Room data saved successfully.\n");
 }
