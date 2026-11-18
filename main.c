@@ -1,11 +1,11 @@
 #include <stdio.h>
-#include "room.h"
-#include "linkedlist.h"
-#include "ui.h"
-#include "booking.h"
-#include "file.h"
 
-int main()
+#include "room.h"
+#include "UI.h"
+#include "linked_list.h"
+#include "file_persistence.h"
+
+int main(void)
 {
     RoomList list;
 
@@ -14,6 +14,12 @@ int main()
     load_rooms_from_file(&list);
 
     main_menu(&list);
+
+    save_rooms_to_file(&list);
+
+    free_room_list(&list);
+
+    printf("\nHotel Booking System closed.\n");
 
     return 0;
 }
