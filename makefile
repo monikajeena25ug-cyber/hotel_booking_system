@@ -1,17 +1,8 @@
-hotel: main.o ui.o booking.o linkedlist.o file.o
-	gcc main.o ui.o booking.o linkedlist.o file.o -o hotel
+all:
+	gcc main.c UI.c booking_engine.c linked_list.c file_persistence.c -o hotel.exe
 
-main.o: main.c
-	gcc -c main.c
+run:
+	hotel.exe
 
-ui.o: ui.c
-	gcc -c ui.c
-
-booking.o: booking.c
-	gcc -c booking.c
-
-linkedlist.o: linkedlist.c
-	gcc -c linkedlist.c
-
-file.o: file.c
-	gcc -c file.c
+clean:
+	del hotel.exe
