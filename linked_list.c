@@ -21,7 +21,7 @@ Node *create_node(Room room)
     return new_node;
 }
 // Insert a new room into the linked list
-int insert_room(roomList *list, room room)
+int add_room(roomList *list, room room)
 {
     // Checking duplicate room number
     if (find_room(list, room.room_number) != NULL)
