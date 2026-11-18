@@ -1,196 +1,179 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "linkedlist.h"
-// Initialize an empty linked list
-void initialize_list(roomList *list)
+#include "linked_list.h"
+
+void initialize_list(RoomList *list)
 {
+    if (list == NULL) {
+        return;
+    }
+
     list->head = NULL;
     list->total_rooms = 0;
 }
-// Create a new node dynamically
+
 Node *create_node(Room room)
 {
     Node *new_node = malloc(sizeof(Node));
-    if (new_node == NULL)
-    {
-        printf("memory allocation failed!\n");
+
+    if (new_node == NULL) {
+        printf("Memory allocation failed.\n");
         return NULL;
     }
+
     new_node->data = room;
     new_node->next = NULL;
+
     return new_node;
 }
-// Insert a new room into the linked list
-int add_room(roomList *list, room room)
-{
-    // Checking duplicate room number
-    if (find_room(list, room.room_number) != NULL)
-    {
-        printf("room number already exists!\n");
-        return 0;
-    }
-    // creating new node
-    Node *new_node = create_node(room);
-    if (new_node == NULL)
-    {
-        return 0;
-    }
-    // If list is empty
-    if (list->head == NULL)
-    {
-        list->head = new_node;
-    }
-    else
-    {
-        // traverse to the last node
-        Node *temp = list->head;
 
-        while (temp->next != NULL)
-        {
-            temp = temp->next;
-        }
-        // Insert at the end
-        temp->next = new_node;
+int add_room(RoomList *list, Room room)
+{
+    if (list == NULL) {
+        return 0;
     }
+
+    if (find_room(list, room.room_number) != NULL) {
+        printf("Room number already exists.\n");
+        return 0;
+    }
+
+    Node *new_node = create_node(room);
+
+    if (new_node == NULL) {
+        return 0;
+    }
+
+    new_node->next = list->head;
+    list->head = new_node;
     list->total_rooms++;
-    printf("room %d added successfully!\n", room.room_number);
+
     return 1;
 }
-// find a room using room number
-Node *find_room(roomList *list, int room_number)
+
+Node *find_room(RoomList *list, int room_number)
 {
-    Node *temp = list->head;
-    while (temp != NULL)
-    {
-        if (temp->data.room_number == room_number)
-        {
-            return temp;
-        }
-        temp = temp->next;
+    if (list == NULL) {
+        return NULL;
     }
+
+    Node *current = list->head;
+
+    while (current != NULL) {
+        if (current->data.room_number == room_number) {
+            return current;
+        }
+
+        current = current->next;
+    }
+
     return NULL;
 }
-// Delete a room from the linked list
-int delete_room(roomList *list, int room_number)
+
+int delete_room(RoomList *list, int room_number)
 {
-    Node *temp = list->head;
+    if (list == NULL) {
+        return 0;
+    }
+
+    Node *current = list->head;
     Node *previous = NULL;
-    // Check empty list
-    if (temp == NULL)
-    {
-        printf("the room list is empty!\n");
-        return 0;
+
+    while (current != NULL) {
+        if (current->data.room_number == room_number) {
+
+            if (current->data.status == ROOM_OCCUPIED) {
+                printf("Cannot delete an occupied room.\n");
+                return 0;
+            }
+
+            if (previous == NULL) {
+                list->head = current->next;
+            } else {
+                previous->next = current->next;
+            }
+
+            free(current);
+            list->total_rooms;
+
+            return 1;
+        }
+
+        previous = current;
+        current = current->next;
     }
-    // Search for room
-    while (temp != NULL &&
-           temp->data.room_number != room_number)
-    {
-        previous = temp;
-        temp = temp->next;
-    }
-    // Room not found
-    if (temp == NULL)
-    {
-        printf("Room not found!\n");
-        return 0;
-    }
-     // Deleting first node
-    if (previous == NULL)
-    {
-        list->head = temp->next;
-    }
-    else
-    {
-        previous->next = temp->next;
-    }
-    free(temp);
-    list->total_rooms;
-    printf("room %d deleted successfully!\n", room_number);
-    return 1;
+
+    return 0;
 }
-// Display all rooms
-void display_rooms(const roomList *list)
+
+void display_rooms(const RoomList *list)
 {
-    Node *temp = list->head;
-    if (temp == NULL)
-    {
-        printf("\n No rooms available in the list.\n");
+    if (list == NULL || list->head == NULL) {
+        printf("No rooms available.\n");
         return;
     }
-    printf("\n");
-    printf("\n");
-    printf("%-10s %-15s %-12s %-12s %-12s\n",
-           "Room No.",
-           "Guest",
-           "Type",
-           "Price",
-           "Status");
-    printf("\n");
-    while (temp != NULL)
-    {
-        char *type;
-        char *status;
-        switch (temp->data.type)
-        {
-            case room_single:
-                type = "single";
+
+    Node *current = list->head;
+
+    while (current != NULL) {
+        printf("\nRoom Number: %d\n",
+               current->data.room_number);
+
+        printf("Price per night: %.2f\n",
+               current->data.price_per_night);
+
+        printf("Nights booked: %d\n",
+               current->data.nights_booked);
+
+        printf("Guest: %s\n",
+               current->data.guest_name);
+
+        printf("Status: ");
+
+        switch (current->data.status) {
+            case ROOM_AVAILABLE:
+                printf("Available\n");
                 break;
-            case room_double:
-                type = "double";
+
+            case ROOM_OCCUPIED:
+                printf("Occupied\n");
                 break;
-            case room_suite:
-                type = "suite";
+
+            case ROOM_MAINTENANCE:
+                printf("Maintenance\n");
                 break;
+
             default:
-                type = "unknown";
+                printf("Unknown\n");
         }
-        switch (temp->data.status)
-        {
-            case room_available:
-                status = "available";
-                break;
-            case room_occupied:
-                status = "occupied";
-                break;
-            case room_maintenance:
-                status = "maintenance";
-                break;
-            default:
-                status = "unknown";
-        }
-        printf("%-10d %-15s %-12s %-12.2f %-12s\n",
-               temp->data.room_number,
-               temp->data.guest_name,
-               type,
-               temp->data.price_per_night,
-               status);
-        temp = temp->next;
+
+        current = current->next;
     }
-    printf("\n");
-    printf("total rooms: %d\n", list->total_rooms);
 }
-// Count total rooms
-int count_rooms(const roomList *list)
+
+int count_rooms(const RoomList *list)
 {
-    int count = 0;
-    Node *temp = list->head;
-    while (temp != NULL)
-    {
-        count++;
-        temp = temp->next;
-    } return count;
+    if (list == NULL) {
+        return 0;
+    }
+
+    return list->total_rooms;
 }
-// Free all dynamically allocated nodes
-void free_room_list(roomList *list)
+
+void free_room_list(RoomList *list)
 {
-       Node *temp = list->head;
-    while (temp != NULL)
-    {
-        Node *next_node = temp->next;
+    if (list == NULL) {
+        return;
+    }
+
+    Node *current = list->head;
+
+    while (current != NULL) {
+        Node *temp = current;
+        current = current->next;
         free(temp);
-           temp = next_node;
     }
+
     list->head = NULL;
     list->total_rooms = 0;
-    printf("all linked list memory released successfully.\n");
 }
